@@ -1,10 +1,11 @@
 #include "GoodWeCommunicator.h"
 
 
-GoodWeCommunicator::GoodWeCommunicator(SettingsManager * settingsMan, bool inDebug)
+GoodWeCommunicator::GoodWeCommunicator(SettingsManager * settingsMan, RemoteDebug * debugger, bool inDebug)
 {
 	settingsManager = settingsMan;
 	debugMode = inDebug;
+  Debug = debugger;
 }
 
 void GoodWeCommunicator::start()
@@ -25,10 +26,11 @@ void GoodWeCommunicator::start()
 	for (char cnt = 1; cnt < 255; cnt++)
 	{
 		sendRemoveRegistration(cnt);
-		delay(1);
+		delay(250);
 	}
 
 	Serial.println("GoodWe Communicator started.");
+ Debug->println("GoodWe Communicator started.");
 }
 
 void GoodWeCommunicator::stop()
@@ -41,7 +43,10 @@ void GoodWeCommunicator::stop()
 int GoodWeCommunicator::sendData(char address, char controlCode, char functionCode, char dataLength, char * data)
 {
 	if (debugMode)
+  {
 		Serial.write("Sending data to inverter(s): ");
+    Debug->printf("Sending data to inverter(s): ");
+  }
 	//send the header first
 	headerBuffer[3] = address;
 	headerBuffer[4] = controlCode;
@@ -56,14 +61,18 @@ int GoodWeCommunicator::sendData(char address, char controlCode, char functionCo
 	for (int cnt = 0; cnt < 7; cnt++)
 	{
 		if (debugMode)
+    {
 			debugPrintHex(headerBuffer[cnt]);
+    }
 		crc += headerBuffer[cnt];
 	}
 
 	for (int cnt = 0; cnt < dataLength; cnt++)
 	{
 		if (debugMode)
+    {
 			debugPrintHex(data[cnt]);
+    }
 		crc += data[cnt];
 	}
 
@@ -75,9 +84,11 @@ int GoodWeCommunicator::sendData(char address, char controlCode, char functionCo
 	if (debugMode)
 	{
 		Serial.print("CRC high/low: ");
+    Debug->printf("CRC high/low: ");
 		debugPrintHex(high);
 		debugPrintHex(low);
 		Serial.println(".");
+    Debug->println(".");
 	}
 
 	return 7 + dataLength + 2; //header, data, crc
@@ -88,13 +99,17 @@ void GoodWeCommunicator::debugPrintHex(char bt)
 	Serial.print("0x");
 	Serial.print(bt, HEX);
 	Serial.print(" ");
+  Debug->printf("0x%x ", bt);
 }
 
 void GoodWeCommunicator::sendDiscovery()
 {
 	//send out discovery for unregistered devices.
 	if(debugMode)
+  {
 		Serial.println("Sending discovery");
+    Debug->println("Sending discovery");
+  }
 	sendData(0x7F, 0x00, 0x00, 0x00, nullptr);
 }
 
@@ -115,6 +130,7 @@ void GoodWeCommunicator::checkOfflineInverters()
 					Serial.print("Marking inverter @ address: ");
 					Serial.print((short)inverters[index].address);
 					Serial.println("offline.");
+          Debug->printf("Marking inverter @ address: %x offline.\n", inverters[index].address);
 				}
 
 				sendRemoveRegistration(inverters[index].address); //send in case the inverter thinks we are online
@@ -179,6 +195,7 @@ void GoodWeCommunicator::checkIncomingData()
 		//there is an open packet timeout. 
 		startPacketReceived = false; //wait for start packet again
 		Serial.println("Comms timeout.");
+    Debug->println("Comms timeout.");
 	}
 }
 void GoodWeCommunicator::parseIncomingData(char incomingDataLength) //
@@ -189,13 +206,16 @@ void GoodWeCommunicator::parseIncomingData(char incomingDataLength) //
 	if (debugMode)
 	{
 		Serial.print("Parsing incoming data with length: ");
+    Debug->printf("Parsing incoming data with length: ");
 		debugPrintHex(incomingDataLength);
 		Serial.print(". ");
+    Debug->printf(". ");
 		debugPrintHex(0xAA);
 		debugPrintHex(0x55);
 		for (char cnt = 0; cnt < incomingDataLength; cnt++)
 			debugPrintHex(inputBuffer[cnt]);
 		Serial.println(".");
+    Debug->println(".");
 	}
 
 	int16_t crc = 0xAA + 0x55;
@@ -208,19 +228,24 @@ void GoodWeCommunicator::parseIncomingData(char incomingDataLength) //
 	if (debugMode)
 	{
 		Serial.print("CRC received: ");
+    Debug->print("CRC received: ");
 		debugPrintHex(inputBuffer[incomingDataLength - 2]);
 		debugPrintHex(inputBuffer[incomingDataLength - 1]);
 		Serial.print(", calculated CRC: ");
+    Debug->print(", calculated CRC: ");
 		debugPrintHex(high);
 		debugPrintHex(low);
 		Serial.println(".");
+    Debug->println(".");
 	}
 	//match the crc
 	if (!(high == inputBuffer[incomingDataLength - 2] && low == inputBuffer[incomingDataLength - 1]))
 		return;
 	if (debugMode)
+  {
 		Serial.println("CRC match.");
-	
+    Debug->println("CRC match.");
+  }
 	//check the contorl code and function code to see what to do
 	if (inputBuffer[2] == 0x00 && inputBuffer[3] == 0x80)
 		handleRegistration(inputBuffer + 5, 16);
@@ -244,6 +269,7 @@ void GoodWeCommunicator::handleRegistration(char * serialNumber, char length)
 		{
 			Serial.print("Already registered inverter reregistered with address: ");
 			Serial.println((short)inverters[index].address);
+      Debug->printf("Already registered inverter reregistered with address: %x\n",inverters[index].address);
 			//found it. Set to unconfirmed and send out the existing address to the inverter
 			inverters[index].addressConfirmed = false;
 			inverters[index].lastSeen = millis();
@@ -256,7 +282,7 @@ void GoodWeCommunicator::handleRegistration(char * serialNumber, char length)
 	GoodWeCommunicator::GoodweInverterInformation newInverter;
 	newInverter.addressConfirmed = false;
 	newInverter.lastSeen = millis();
-	newInverter.isDTSeries = false; //TODO. Determine if DT series inverter by getting info
+	newInverter.isDTSeries = true; //TODO. Determine if DT series inverter by getting info
 	memset(newInverter.serialNumber, 0, 17);
 	memcpy(newInverter.serialNumber, serialNumber, 16);
 	//get the new address. Add one (overflows at 255) and check if not in use
@@ -269,6 +295,7 @@ void GoodWeCommunicator::handleRegistration(char * serialNumber, char length)
 	{
 		Serial.print("New inverter found. Current # registrations: ");
 		Serial.println(inverters.size());
+    Debug->printf("New inverter found. Current # registrations: %d\n", inverters.size());
 	}
 
 	sendAllocateRegisterAddress(serialNumber, lastUsedAddress);
@@ -280,13 +307,17 @@ void GoodWeCommunicator::handleRegistrationConfirmation(char address)
 	{
 		Serial.print("Handling registration information for address: ");
 		Serial.println((short)address);
+    Debug->printf("Handling registration information for address: %x\n",address);
 	}
 	//lookup the inverter and set it to confirmed
 	auto inverter = getInverterInfoByAddress(address);
 	if (inverter)
 	{
 		if (debugMode)
+    {
 			Serial.println("Inverter information found in list of inverters.");
+      Debug->println("Inverter information found in list of inverters.");
+    }
 		inverter->addressConfirmed = true;
 		inverter->isOnline = false; //inverter is online, but we first need to get its information
 		inverter->lastSeen = millis();
@@ -299,6 +330,8 @@ void GoodWeCommunicator::handleRegistrationConfirmation(char address)
 			Serial.println((short)address);
 			Serial.print("Current # registrations: ");
 			Serial.println(inverters.size());
+      Debug->printf("Error. Could not find the inverter with address: %x\n", address);
+      Debug->printf("Current # registrations: %d\n", inverters.size());
 		}
 	}
 	//get the information straight away
@@ -372,6 +405,8 @@ void GoodWeCommunicator::askAllInvertersForInformation()
 				Serial.print(", isOnline: ");
 				Serial.print((short)inverters[index].isOnline);
 				Serial.println(".");
+
+        Debug->printf("Not asking inverter with address: %x for information. Addressconfirmed: %d, isOnline: %d.\n", inverters[index].address, inverters[index].addressConfirmed, inverters[index].isOnline);
 			}
 		}
 	}
@@ -399,6 +434,7 @@ void GoodWeCommunicator::sendAllocateRegisterAddress(char * serialNumber, char a
 	{
 		Serial.print("SendAllocateRegisterAddress address: ");
 		Serial.println((short)address);
+    Debug->printf("SendAllocateRegisterAddress address: %x\n", address);
 	}
 
 	//create our registrationpacket with serialnumber and address and send it over

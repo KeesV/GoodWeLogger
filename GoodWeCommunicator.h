@@ -2,6 +2,7 @@
 #include <vector>
 #include <SoftwareSerial.h>
 #include <ESP8266WiFi.h>
+#include <RemoteDebug.h>
 #include "SettingsManager.h"
 
 #define GOODWE_COMMS_ADDRES 0xAB
@@ -55,7 +56,7 @@ public:
 		float eDay = 0.0;
 	};
 
-	GoodWeCommunicator(SettingsManager * settingsManager, bool debugMode = false);
+	GoodWeCommunicator(SettingsManager * settingsManager, RemoteDebug * debugger, bool debugMode = false);
 	void start();
 	void stop();
 	void handle();
@@ -68,6 +69,7 @@ private:
 
 	static const int BufferSize = 96;	// largest packet is 67 bytes long. Extra for receiving with sliding window 
 	SoftwareSerial * goodweSerial;
+  RemoteDebug * Debug;
 	SettingsManager * settingsManager;
 
 	char headerBuffer[7];

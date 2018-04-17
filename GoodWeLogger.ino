@@ -7,6 +7,7 @@
 #include <ESP8266HTTPClient.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
+#include <RemoteDebug.h>
 #include "GoodWeCommunicator.h"
 #include "SettingsManager.h"
 #include "MQTTPublisher.h"
@@ -14,9 +15,9 @@
 #include "ESP8266mDNS.h"
 #include "Settings.h"			//change and then rename Settings.example.h to Settings.h to compile
 
-
+RemoteDebug Debug;
 SettingsManager settingsManager;
-GoodWeCommunicator goodweComms(&settingsManager, true);
+GoodWeCommunicator goodweComms(&settingsManager, &Debug, true);
 MQTTPublisher mqqtPublisher(&settingsManager, &goodweComms, true);
 PVOutputPublisher pvoutputPublisher(&settingsManager, &goodweComms, true);
 WiFiUDP ntpUDP;
@@ -61,6 +62,10 @@ void setup()
 	Serial.println("");
 	Serial.println("Connected!");
 
+  Debug.begin(WIFI_HOSTNAME);
+  Debug.setResetCmdEnabled(true); // Enable the reset command
+  Debug.printf("Connected!");
+
 	timeClient.begin();
 
 	ArduinoOTA.setHostname("GoodWeLogger");
@@ -86,6 +91,7 @@ void setup()
 	Serial.println("Ready");
 	Serial.println("IP address: ");
 	Serial.println(WiFi.localIP());
+ Debug.println("Ready");
 
 	//ntp client
 	goodweComms.start();
@@ -112,6 +118,8 @@ void loop()
 
 	ArduinoOTA.handle();
 	yield();
+  Debug.handle();
+  yield();
 	goodweComms.handle();
 	yield();
 	mqqtPublisher.handle();
