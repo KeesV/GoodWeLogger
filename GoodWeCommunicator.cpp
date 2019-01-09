@@ -25,7 +25,7 @@ void GoodWeCommunicator::start()
 	for (char cnt = 1; cnt < 255; cnt++)
 	{
 		sendRemoveRegistration(cnt);
-		delay(1);
+		delay(500);
 	}
 
 	Serial.println("GoodWe Communicator started.");
@@ -256,7 +256,7 @@ void GoodWeCommunicator::handleRegistration(char * serialNumber, char length)
 	GoodWeCommunicator::GoodweInverterInformation newInverter;
 	newInverter.addressConfirmed = false;
 	newInverter.lastSeen = millis();
-	newInverter.isDTSeries = false; //TODO. Determine if DT series inverter by getting info
+	newInverter.isDTSeries = true; //TODO. Determine if DT series inverter by getting info
 	memset(newInverter.serialNumber, 0, 17);
 	memcpy(newInverter.serialNumber, serialNumber, 16);
 	//get the new address. Add one (overflows at 255) and check if not in use
