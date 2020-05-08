@@ -1,6 +1,3 @@
-//Hostname of ESP8266
-#define WIFI_HOSTNAME "GoodWeLogger"
-
 //Wifi SSID to connect to
 #define WIFI_SSID "<your wifi ssid>"
 
@@ -20,10 +17,10 @@
 #define MQTT_PASSWORD   "<mqtt password>"
 
 //update interval for fast changing values in milliseconds for mqtt
-#define MQTT_QUICK_UPDATE_INTERVAL  1000
+#define MQTT_QUICK_UPDATE_INTERVAL  10000
 
 //update interval for slow changing values in milliseconds for mqtt
-#define MQTT_REGULAR_UPDATE_INTERVAL  10000
+#define MQTT_REGULAR_UPDATE_INTERVAL  60000
 
 //set to your pvoutput api key (must have write rights). Leave empty to disable pvoutput publishing
 #define PVOUTPUT_API_KEY  "<your api key for pvoutput>"
@@ -42,3 +39,21 @@
 
 //rs485 transmit pin
 #define RS485_TX D2
+
+//Hostname to use on local network
+#define WIFI_HOSTNAME "GoodWeLogger"
+
+//NTP server addres
+#define NTP_SERVER "pool.ntp.org"
+
+//Wifi connection timeout. If Wifi connection is lost for this long the ESP is restarted
+#define WIFI_CONNECT_TIMEOUT 30*1000 
+
+//Inverter data reset after 11 minutes (inverter reconnect timeout is 10 minutes, 1 minute extra to avoid too quick reset) 
+#define INVERTER_OFFLINE_RESET_VALUES_TIMEOUT 11*60*1000 
+
+//Enable debbugging through serial or remote
+#define DEBUGGING_ENABLED true
+
+//Enable telnet/remote debugging?
+#define REMOTE_DEBUGGING_ENABLED true
